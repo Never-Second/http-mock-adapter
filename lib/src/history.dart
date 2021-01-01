@@ -25,13 +25,16 @@ class History {
         }
 
         data.forEach((element) {
-          if (options.signature == element.request.signature) {
+          if (options.signature == element.request.signature ||
+              options.matchesRequest(element.request)) {
             _requestInvocationIndex = data.indexOf(element);
 
             current.responseBody =
                 requestHandler.requestMap[requestHandler.statusCode];
           }
         });
+
+        assert(_requestInvocationIndex != null && _requestInvocationIndex >= 0);
 
         final responseBody = current.responseBody;
 

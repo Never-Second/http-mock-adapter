@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:http_mock_adapter/src/exceptions.dart';
+import 'package:http_mock_adapter/src/matchers/matcher.dart';
 import 'package:test/test.dart';
 import 'package:http_mock_adapter/http_mock_adapter.dart';
 import 'package:http_mock_adapter/src/interceptors/dio_interceptor.dart';
@@ -325,6 +326,37 @@ void main() {
 
         response = await dio.get('/api');
         expect(jsonEncode({'message': 'Chain!'}), response.data);
+      });
+
+      group('value matchers', () {
+        test('mocks requests via onPost() with matchers as intended', () async {
+          dioAdapter = DioAdapter();
+
+          dio.httpClientAdapter = dioAdapter;
+
+          dioAdapter.onPost(
+            '/post-any-data',
+            data: {
+              'post': anyValue,
+              'pattern': RegExpMatcher(pattern: 'TEST'),
+              'regexp': RegExpMatcher(regexp: RegExp(r'([a-z]{3} ?){3}')),
+              'strict': 'match',
+            },
+            headers: {
+              'content-type': RegExpMatcher(pattern: 'application'),
+              'content-length': anyNumber,
+            },
+          ).reply(statusCode, data);
+
+          response = await dio.post('/post-any-data', data: {
+            'post': '201',
+            'pattern': 'this is a test with ',
+            'regexp': 'abc def hij',
+            'strict': 'match',
+          });
+
+          expect(jsonEncode({'message': 'Test!'}), response.data);
+        });
       });
     });
   });

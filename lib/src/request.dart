@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:http_mock_adapter/src/exceptions.dart';
+import 'package:http_mock_adapter/src/matchers/matcher.dart';
 import 'package:meta/meta.dart';
 
 import 'handlers/request_handler.dart';
@@ -53,6 +54,48 @@ extension Signature on RequestOptions {
       '/' +
       sortedData(queryParameters) +
       '/$headers';
+}
+
+/// [MatchesRequest] enhances the RequestOptions by allowing different types
+/// of matchers to validate the data and headers of the request.
+extension MatchesRequest on RequestOptions {
+  /// Check values against matchers.
+  /// [req] is the configured [Request] which would contain the matchers if used.
+  bool matchesRequest(Request req) {
+    if (path != req.route ||
+        method != req.method.value ||
+        !mapMatches(data, req.data) ||
+        !mapMatches(queryParameters, req.queryParameters) ||
+        !mapMatches(headers, req.headers)) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /// Check the map keys and values determined by the definition
+  bool mapMatches(dynamic a, dynamic b) {
+    if (a is Map && b is Map) {
+      for (var k in a.keys.toList()) {
+        if (!b.containsKey(k)) {
+          return false;
+        } else if (b[k] is Matcher) {
+          /// check matcher
+          if (!b[k].matches(a[k])) {
+            return false;
+          }
+        } else if (b[k] != a[k]) {
+          /// exact match
+          return false;
+        }
+      }
+    } else if (sortedData(a) != sortedData(b)) {
+      /// fall back to original check
+      return false;
+    }
+
+    return true;
+  }
 }
 
 /// [sortedData] sorts request [Signature]'s and [Request.signature]'s 'data'
