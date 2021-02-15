@@ -81,22 +81,24 @@ extension MatchesRequest on RequestOptions {
   /// Check values against matchers.
   /// [request] is the configured [Request] which would contain the matchers if used.
   bool matchesRequest(Request request) {
-    final matchesRequestBody =
-        data != null && request.data != null && !matches(data, request.data);
+    final requestBodyMatches = matches(data, request.data);
 
-    final matchesQueryParameters = queryParameters != null &&
-        request.queryParameters != null &&
-        !matches(queryParameters, request.queryParameters);
+    final queryParametersMatch =
+        matches(queryParameters, request.queryParameters);
 
-    final matchesHeaders = headers != null &&
-        request.headers != null &&
-        !matches(headers, request.headers);
+    // dio adds headers to the requeset when none aare specified
+    final requestHeaders = request.headers ??
+        {
+          Headers.contentTypeHeader: Headers.jsonContentType,
+          Headers.contentLengthHeader: Matchers.number
+        };
+    final headersMatch = matches(headers, requestHeaders);
 
     if (path != request.route ||
         method != request.method.value ||
-        matchesRequestBody ||
-        matchesQueryParameters ||
-        matchesHeaders) {
+        !requestBodyMatches ||
+        !queryParametersMatch ||
+        !headersMatch) {
       return false;
     }
 
@@ -105,6 +107,10 @@ extension MatchesRequest on RequestOptions {
 
   /// Check the map keys and values determined by the definition.
   bool matches(dynamic actual, dynamic expected) {
+    if (actual == null && expected == null) {
+      return true;
+    }
+
     if (expected is Matcher) {
       /// Check the match here to bypass the fallthrough strict equality check
       /// at the end.
